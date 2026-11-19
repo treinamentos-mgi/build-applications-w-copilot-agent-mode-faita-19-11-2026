@@ -43,22 +43,26 @@ flowchart LR
 
 ## Decisões de implementação
 
-Registre seu plano aqui antes de editar o código.
-
-- Decisão da camada de apresentação:
-- Decisão da camada de lógica:
-- Decisão da camada de dados:
-- Abordagem para registro de atividades:
-- Abordagem para gerenciamento de equipes:
-- Abordagem para o placar:
-- Abordagem para sugestões de treino:
+- Decisão da camada de apresentação: manter as páginas React como consumidoras da API, usando o cliente compartilhado e caminhos `/api`; cada capacidade deve comunicar carregamento, erro e estado vazio com conteúdo acessível. Não colocar regras de negócio nem acesso ao MongoDB na interface.
+- Decisão da camada de lógica: manter as rotas Express responsáveis pelo protocolo HTTP e concentrar validações e regras de negócio nos serviços. Validar entradas antes de consultar o Mongoose e traduzir entradas inválidas ou referências inexistentes em respostas 4xx, nunca em erros de conversão 500.
+- Decisão da camada de dados: definir nos modelos Mongoose os campos e relações obrigatórios: pessoa com nome, e-mail e meta; equipe com nome, mascote e integrantes; atividade com pessoa, equipe, tipo, minutos, pontos e data; treino com título, foco, duração e dificuldade. Usar o seed da aplicação de forma idempotente, preservando registros não relacionados.
+- Abordagem para registro de atividades: aceitar `userId`, `teamId`, `type` e `minutes`; validar formato e existência das referências; calcular pontos no serviço a partir dos minutos e gerar `occurredAt` no servidor. Não confiar em pontos ou data enviados pelo cliente.
+- Abordagem para gerenciamento de equipes: exigir nome, preservar nome e mascote informados, usar lista vazia quando não houver integrantes e validar as referências dos integrantes antes de persistir. A listagem deve devolver os integrantes associados.
+- Abordagem para o placar: somar os pontos das atividades por equipe, ordenar do maior total para o menor e atribuir posições começando em 1.
+- Abordagem para sugestões de treino: localizar a pessoa pelo e-mail, priorizar treinos compatíveis com sua meta ou atividade recente e incluir uma justificativa legível; responder com 4xx quando a pessoa não existir.
 
 ## Plano de testes
 
-Registre os comandos executados e o significado de cada falha.
+- **Ordem segura**: validar modelos e seed antes dos serviços/rotas; validar o contrato da API antes de integrar a interface; executar as compilações após as suítes direcionadas. Corrigir uma camada antes de avançar para a seguinte.
+- **Dados**: `npm run test:data --prefix octofit-tracker/backend` verifica campos obrigatórios, relações e seed representativo idempotente sem apagar dados não relacionados.
+- **API**: `npm run test:api --prefix octofit-tracker/backend` verifica criação e listagem de atividades/equipes, rejeição de entradas inválidas, cálculo do placar e recomendações personalizadas.
+- **Frontend**: `npm test --prefix octofit-tracker/frontend` verifica consumo da API e apresentação de dados, carregamento, estados vazios e erros acessíveis nas quatro capacidades.
+- **Compilação**: `npm run build --prefix octofit-tracker/backend` e `npm run build --prefix octofit-tracker/frontend` verificam tipos e empacotamento de cada camada.
+- **Validação do exercício**: `node --test tests/exercise-validation.test.mjs` verifica os metadados, os contratos protegidos e a composição do exercício; falhas aqui devem ser separadas das falhas funcionais do OctoFit.
 
-- Testes da camada de dados: `npm run test:data --prefix octofit-tracker/backend`
-- Testes da API: `npm run test:api --prefix octofit-tracker/backend`
-- Testes do frontend: `npm test --prefix octofit-tracker/frontend`
-- Compilação do backend: `npm run build --prefix octofit-tracker/backend`
-- Compilação do frontend: `npm run build --prefix octofit-tracker/frontend`
+### Linha de base antes da implementação
+
+- `npm test --prefix octofit-tracker/backend`: 8 falhas e 1 aprovação. Falham os quatro contratos da API e as validações dos quatro modelos; o teste de seed idempotente passa.
+- `npm test --prefix octofit-tracker/frontend`: 15 falhas. Os componentes ainda mostram o placeholder, portanto não atendem aos estados de dados, carregamento, vazio e erro.
+- `node --test tests/exercise-validation.test.mjs`: 4 falhas e 38 aprovações. As quatro falhas são bloqueadas pelo mesmo contrato do README: o badge “Copy Exercise” precisa apontar para o template `dev-pods`; não devem ser interpretadas como quatro defeitos independentes do parser.
+- As compilações ainda não foram executadas nesta linha de base.
